@@ -11,7 +11,7 @@ export default function ResumeTailor() {
   const [rawResumeText, setRawResumeText] = useState(''); // NEW: Real user data state
   const [finalizedBullets, setFinalizedBullets] = useState<Record<number, string>>({});
 
-  const { object, submit, isLoading } = useObject({
+  const { object, submit, isLoading, error } = useObject({
     api: '/api/generate',
     schema: z.object({
       bullets: z.array(
@@ -23,10 +23,36 @@ export default function ResumeTailor() {
     }),
   });
 
-  const handlePdfUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setPdfUrl(URL.createObjectURL(file));
+    if (!file) return;
+
+    // 1. Show the visual PDF in the iframe
+    setPdfUrl(URL.createObjectURL(file));
+
+    // 2. Add a temporary loading state for the text box (optional but good UX)
+    setRawResumeText("Extracting text from PDF, please wait...");
+
+    try {
+      // 3. Send the file to our new extraction API
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/extract-pdf', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      
+      if (data.text) {
+        // 4. Magically populate the text box!
+        setRawResumeText(data.text);
+      } else {
+        setRawResumeText("Could not extract text. Please paste manually.");
+      }
+    } catch (error) {
+      setRawResumeText("Error extracting text. Please paste manually.");
     }
   };
 
@@ -100,6 +126,12 @@ export default function ResumeTailor() {
         
         <div className="w-[210mm] min-h-[297mm] bg-white shadow-2xl p-[20mm] flex flex-col gap-4 mx-auto shrink-0">
           <h1 className="text-2xl font-bold text-gray-900 border-b pb-2 mb-4">AI Changes</h1>
+          
+          {error && (
+            <div className="bg-red-50 text-red-600 p-4 rounded-md border border-red-200 mb-4">
+              <strong>AI Error:</strong> {error.message}
+            </div>
+          )}
           
           {displayBullets.length === 0 && (
             <p className="text-gray-400 italic">Your tailored bullets will stream here...</p>
