@@ -7,6 +7,8 @@ import { z } from 'zod';
 import { pdf } from '@react-pdf/renderer';
 import { ResumeDocument } from '@/components/ResumeDocument';
 
+
+
 export default function ResumeTailor() {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [jd, setJd] = useState('');
@@ -46,16 +48,26 @@ export default function ResumeTailor() {
         body: formData,
       });
 
-      const data = await res.json();
-      
-      if (data.text) {
+      const contentType = res.headers.get('content-type') || '';
+      const data = contentType.includes('application/json')
+        ? await res.json()
+        : { error: 'Server returned an unexpected response format.' };
+
+      if (!res.ok) {
+        throw new Error(typeof data?.error === 'string' ? data.error : `Extraction failed with status ${res.status}`);
+      }
+
+      if (typeof data?.text === 'string' && data.text.trim()) {
         // 4. Magically populate the text box!
         setRawResumeText(data.text);
       } else {
         setRawResumeText("Could not extract text. Please paste manually.");
       }
     } catch (error) {
-      setRawResumeText("Error extracting text. Please paste manually.");
+      const message = error instanceof Error
+        ? error.message
+        : 'Please paste manually.';
+      setRawResumeText(`Error extracting text: ${message}`);
     }
   };
 
@@ -116,10 +128,10 @@ export default function ResumeTailor() {
         
         {/* NEW: Textarea to hold the actual resume text for the AI */}
         <div className="p-4 border-b border-gray-200 h-1/3 flex flex-col gap-2">
-          <label className="font-medium text-gray-600">Paste Resume Text Here (For AI)</label>
+          <label className="font-medium text-gray-600">Extracted Content from Resume</label>
           <textarea 
             className="w-full flex-1 p-3 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            placeholder="Paste your current resume bullet points here..."
+            placeholder="Resume bullet points here..."
             value={rawResumeText}
             onChange={(e) => setRawResumeText(e.target.value)}
           />
