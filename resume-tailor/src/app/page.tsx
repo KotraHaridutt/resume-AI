@@ -65,6 +65,11 @@ export default function ResumeTailor() {
   };
 
   const displayBullets = object?.bullets || [];
+  const errorMessage = error instanceof Error
+    ? error.message
+    : error
+      ? 'An unexpected error occurred while generating bullet points.'
+      : null;
 
   const handleExportPdf = async () => {
     setIsExporting(true);
@@ -171,9 +176,9 @@ export default function ResumeTailor() {
         <div className="w-[210mm] min-h-[297mm] bg-white shadow-2xl p-[20mm] flex flex-col gap-4 mx-auto shrink-0">
           <h1 className="text-2xl font-bold text-gray-900 border-b pb-2 mb-4">AI Changes</h1>
           
-          {error && (
+          {errorMessage && (
             <div className="bg-red-50 text-red-600 p-4 rounded-md border border-red-200 mb-4">
-              <strong>AI Error:</strong> {error.message}
+              <strong>AI Error:</strong> {errorMessage}
             </div>
           )}
           
@@ -210,13 +215,13 @@ export default function ResumeTailor() {
                 {!isFinalized && !isLoading && bullet?.currentText && (
                   <div className="absolute right-0 top-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white border shadow-sm rounded flex text-xs">
                     <button 
-                      onClick={() => setFinalizedBullets(prev => ({ ...prev, [idx]: bullet.currentText }))}
+                      onClick={() => setFinalizedBullets(prev => ({ ...prev, [idx]: bullet.currentText || "" }))}
                       className="px-2 py-1 text-green-600 hover:bg-green-50 border-r transition-colors"
                     >
                       Accept
                     </button>
                     <button 
-                      onClick={() => setFinalizedBullets(prev => ({ ...prev, [idx]: bullet.originalText }))}
+                      onClick={() => setFinalizedBullets(prev => ({ ...prev, [idx]: bullet.originalText || "" }))}
                       className="px-2 py-1 text-red-600 hover:bg-red-50 transition-colors"
                     >
                       Reject

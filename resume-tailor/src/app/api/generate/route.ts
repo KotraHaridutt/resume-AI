@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     
     User's Raw Resume Text:
     ${rawResumeText}`,
-  });
+  }as any); 
 
   // FIX 2: Return the stream to the frontend
   return result.toTextStreamResponse();
