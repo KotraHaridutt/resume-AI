@@ -4,12 +4,15 @@ import { experimental_useObject as useObject } from '@ai-sdk/react';
 import { DiffViewer } from '@/components/DiffViewer';
 import { UploadCloud, Download } from 'lucide-react';
 import { z } from 'zod';
+import { pdf } from '@react-pdf/renderer';
+import { ResumeDocument } from '@/components/ResumeDocument';
 
 export default function ResumeTailor() {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [jd, setJd] = useState('');
   const [rawResumeText, setRawResumeText] = useState(''); // NEW: Real user data state
   const [finalizedBullets, setFinalizedBullets] = useState<Record<number, string>>({});
+  const [isExporting, setIsExporting] = useState(false);
 
   const { object, submit, isLoading, error } = useObject({
     api: '/api/generate',
@@ -62,6 +65,36 @@ export default function ResumeTailor() {
   };
 
   const displayBullets = object?.bullets || [];
+
+  const handleExportPdf = async () => {
+    setIsExporting(true);
+    try {
+      // 1. Gather the text for the PDF
+      const finalBulletsToExport = displayBullets.map((bullet, idx) => {
+        // If they clicked accept/reject, use that specific text. 
+        // Otherwise, safely fallback to the original bullet text.
+        return finalizedBullets[idx] || bullet?.originalText || "";
+      }).filter(text => text.trim() !== ""); // Remove empty ones
+
+      // 2. Generate the PDF Blob locally in the browser
+      const blob = await pdf(<ResumeDocument bullets={finalBulletsToExport} />).toBlob();
+
+      // 3. Trigger the browser download
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'Tailored_Resume.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to generate PDF", error);
+      alert("Failed to export PDF.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div className="h-screen w-full flex bg-gray-100 overflow-hidden text-sm">
@@ -121,6 +154,17 @@ export default function ResumeTailor() {
         <div className="w-full flex justify-end mb-4 min-w-[210mm] mx-auto">
            <button className="bg-white text-gray-700 px-4 py-2 rounded shadow flex items-center gap-2 hover:bg-gray-50 transition">
              <Download size={16} /> Export PDF
+           </button>
+        </div>
+        
+        <div className="w-full flex justify-end mb-4 min-w-[210mm] mx-auto">
+           <button 
+             onClick={handleExportPdf}
+             disabled={isExporting || displayBullets.length === 0}
+             className="bg-white text-gray-700 px-4 py-2 rounded shadow flex items-center gap-2 hover:bg-gray-50 transition disabled:opacity-50"
+           >
+             <Download size={16} /> 
+             {isExporting ? 'Generating...' : 'Export PDF'}
            </button>
         </div>
         
